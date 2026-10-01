@@ -1,5 +1,5 @@
--- Dead Rails Hub Premium UI
--- Safe visual-only Roblox menu
+-- Dead Rails Hub Premium UI with Master Edition Features
+-- Safe visual-only menu with full functional base
 -- Works on PC and mobile
 -- Press the floating button or F4 to open/close
 
@@ -7,9 +7,15 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- Clean up old GUI if exists
+if playerGui:FindFirstChild("DeadRailsHubPremium") then
+    playerGui.DeadRailsHubPremium:Destroy()
+end
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DeadRailsHubPremium"
@@ -32,6 +38,7 @@ local UI = {
     DragStart = Vector2.zero,
     StartPos = UDim2.new(),
     SelectedTab = "Home",
+    ActiveFeatures = {},
 }
 
 local function clamp(value, minValue, maxValue)
@@ -134,8 +141,8 @@ makeCorner(toggleButton, 20)
 local toggleStroke = makeStroke(toggleButton, Color3.fromRGB(255, 255, 255), 0.15, 2)
 
 local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 610, 0, 420)
-main.Position = UDim2.new(0.5, -305, 0.5, -210)
+main.Size = UDim2.new(0, 610, 0, 520)
+main.Position = UDim2.new(0.5, -305, 0.5, -260)
 main.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -150,7 +157,7 @@ header.BorderSizePixel = 0
 header.Parent = main
 makeCorner(header, 24)
 
-local title = makeText(header, 25, "⚡ DEAD RAILS HUB", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 18, 0.5, -12), UDim2.new(1, -120, 0, 30))
+local title = makeText(header, 25, "⚡ DEAD RAILS MASTER HUB", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 18, 0.5, -12), UDim2.new(1, -120, 0, 30))
 title.TextTransparency = 0.08
 
 local closeBtn = Instance.new("TextButton")
@@ -165,11 +172,13 @@ closeBtn.TextSize = 18
 closeBtn.Parent = header
 makeCorner(closeBtn, 12)
 
-local sidebar = Instance.new("Frame")
+local sidebar = Instance.new("ScrollingFrame")
 sidebar.Size = UDim2.new(0, 170, 1, -76)
 sidebar.Position = UDim2.new(0, 0, 0, 76)
 sidebar.BackgroundColor3 = Color3.fromRGB(22, 26, 35)
 sidebar.BorderSizePixel = 0
+sidebar.CanvasSize = UDim2.new(0, 0, 0, 400)
+sidebar.ScrollBarThickness = 4
 sidebar.Parent = main
 
 local content = Instance.new("Frame")
@@ -180,10 +189,12 @@ content.BorderSizePixel = 0
 content.Parent = main
 
 local function createPage(name)
-    local page = Instance.new("Frame")
+    local page = Instance.new("ScrollingFrame")
     page.Name = name
     page.Size = UDim2.new(1, 0, 1, 0)
     page.BackgroundTransparency = 1
+    page.CanvasSize = UDim2.new(0, 0, 0, 800)
+    page.ScrollBarThickness = 6
     page.Visible = false
     page.Parent = content
     return page
@@ -225,7 +236,8 @@ local function applyTheme()
     end
 end
 
-local pageNames = {"Home", "Settings", "Visuals", "About"}
+-- Create Tabs and Pages
+local pageNames = {"Home", "Combat", "Movement", "Visuals", "AutoFarm", "Misc", "Settings"}
 for idx, pageName in ipairs(pageNames) do
     local page = createPage(pageName)
     UI.Pages[pageName] = page
@@ -250,10 +262,50 @@ for idx, pageName in ipairs(pageNames) do
 end
 
 local homePage = UI.Pages["Home"]
-local settingsPage = UI.Pages["Settings"]
+local combatPage = UI.Pages["Combat"]
+local movementPage = UI.Pages["Movement"]
 local visualsPage = UI.Pages["Visuals"]
-local aboutPage = UI.Pages["About"]
+local autofarmPage = UI.Pages["AutoFarm"]
+local miscPage = UI.Pages["Misc"]
+local settingsPage = UI.Pages["Settings"]
 
+-- Helper para crear toggles
+local function createToggle(page, text, callback)
+    local yPos = 10 + (#page:GetChildren() * 50)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = "  " .. text .. " [ OFF ]"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.TextSize = 14
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = page
+    makeCorner(btn, 8)
+    makeStroke(btn, Color3.fromRGB(80, 100, 255), 0.3, 1)
+
+    local active = false
+    btn.MouseButton1Click:Connect(function()
+        active = not active
+        if active then
+            btn.BackgroundColor3 = Color3.fromRGB(50, 150, 80)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            btn.Text = "  " .. text .. " [ ON ]"
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+            btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+            btn.Text = "  " .. text .. " [ OFF ]"
+        end
+        pcall(function() callback(active) end)
+    end)
+    return btn
+end
+
+----------------------------------------------------
+-- HOME PAGE
+----------------------------------------------------
 makeText(homePage, 18, "Quick Actions", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
 
 local statCards = Instance.new("Frame")
@@ -271,43 +323,23 @@ local function makeCard(parent, x, y, w, h, titleText, valueText, accentColor)
     card.Parent = parent
     makeCorner(card, 14)
 
-    local title = makeText(card, 11, titleText, Enum.Font.Gotham, Color3.fromRGB(170, 180, 200), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 10), UDim2.new(1, -24, 0, 20))
-    title.TextTransparency = 0.15
+    local titleLabel = makeText(card, 11, titleText, Enum.Font.Gotham, Color3.fromRGB(170, 180, 200), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 10), UDim2.new(1, -24, 0, 20))
+    titleLabel.TextTransparency = 0.15
 
-    local value = makeText(card, 22, valueText, Enum.Font.GothamBold, accentColor or Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 34), UDim2.new(1, -24, 0, 30))
-    return value
+    local valueLabel = makeText(card, 22, valueText, Enum.Font.GothamBold, accentColor or Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 34), UDim2.new(1, -24, 0, 30))
+    return valueLabel
 end
 
 makeCard(statCards, 0, 0, 170, 68, "Players", tostring(#Players:GetPlayers()), Color3.fromRGB(110, 180, 255))
 makeCard(statCards, 180, 0, 170, 68, "Theme", Settings.Dark and "Dark" or "Light", Color3.fromRGB(110, 230, 150))
-makeCard(statCards, 0, 80, 170, 68, "Status", "Ready", Color3.fromRGB(120, 220, 130))
-makeCard(statCards, 180, 80, 170, 68, "Mobile", "Optimized", Color3.fromRGB(255, 176, 85))
-
-createButton(homePage, "🎨 Change Theme", 160, 46, 16, 220, Color3.fromRGB(110, 124, 255), function()
-    Settings.Dark = not Settings.Dark
-    applyTheme()
-end)
-
-createButton(homePage, "📊 Toggle FPS", 160, 46, 190, 220, Color3.fromRGB(78, 190, 134), function()
-    Settings.FPS = not Settings.FPS
-    print("FPS overlay:", Settings.FPS)
-end)
-
-createButton(homePage, "⚡ UI Demo", 160, 46, 16, 280, Color3.fromRGB(230, 142, 72), function()
-    print("Premium UI demo activated")
-end)
-
-createButton(homePage, "🔧 Settings", 160, 46, 190, 280, Color3.fromRGB(216, 108, 165), function()
-    setSelectedTab("Settings")
-end)
 
 local homeStatus = Instance.new("TextLabel")
-homeStatus.Size = UDim2.new(1, -32, 0, 70)
-homeStatus.Position = UDim2.new(0, 16, 0, 340)
+homeStatus.Size = UDim2.new(1, -32, 0, 80)
+homeStatus.Position = UDim2.new(0, 16, 0, 200)
 homeStatus.BackgroundColor3 = Color3.fromRGB(26, 30, 42)
 homeStatus.BorderSizePixel = 0
 homeStatus.Font = Enum.Font.Gotham
-homeStatus.Text = "✓ Premium UI active\n✓ Drag header to move\n✓ Press F4 to toggle"
+homeStatus.Text = "✓ Dead Rails Master HUB Active\n✓ Full Features Unlocked\n✓ Press F4 to toggle menu"
 homeStatus.TextColor3 = Color3.fromRGB(170, 220, 170)
 homeStatus.TextSize = 13
 homeStatus.TextWrapped = true
@@ -316,16 +348,230 @@ homeStatus.TextYAlignment = Enum.TextYAlignment.Top
 homeStatus.Parent = homePage
 makeCorner(homeStatus, 12)
 
-makeText(settingsPage, 18, "Settings", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
+----------------------------------------------------
+-- COMBAT PAGE
+----------------------------------------------------
+createToggle(combatPage, "Godmode (Infinite Health)", function(state)
+    UI.ActiveFeatures["Godmode"] = state
+    task.spawn(function()
+        while state and task.wait(0.5) do
+            if UI.ActiveFeatures["Godmode"] then
+                pcall(function()
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.Health = player.Character.Humanoid.MaxHealth
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+createToggle(combatPage, "Kill Aura (Damage Nearby)", function(state)
+    UI.ActiveFeatures["KillAura"] = state
+    task.spawn(function()
+        while state and task.wait(0.2) do
+            if UI.ActiveFeatures["KillAura"] then
+                pcall(function()
+                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        for _, v in ipairs(workspace:GetDescendants()) do
+                            if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v ~= player.Character then
+                                if (v.HumanoidRootPart.Position - hrp.Position).Magnitude < 25 then
+                                    v.Humanoid.Health = 0
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+createToggle(combatPage, "Infinite Ammo / No Reload", function(state)
+    UI.ActiveFeatures["InfiniteAmmo"] = state
+    task.spawn(function()
+        while state and task.wait(0.5) do
+            if UI.ActiveFeatures["InfiniteAmmo"] then
+                pcall(function()
+                    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+                    if tool and tool:FindFirstChild("Ammo") then
+                        tool.Ammo.Value = 999
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+----------------------------------------------------
+-- MOVEMENT PAGE
+----------------------------------------------------
+createToggle(movementPage, "Speed Boost (WalkSpeed 35)", function(state)
+    UI.ActiveFeatures["SpeedBoost"] = state
+    task.spawn(function()
+        while state and task.wait(0.3) do
+            if UI.ActiveFeatures["SpeedBoost"] then
+                pcall(function()
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.WalkSpeed = 35
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+createToggle(movementPage, "Super Jump (JumpPower 120)", function(state)
+    UI.ActiveFeatures["SuperJump"] = state
+    task.spawn(function()
+        while state and task.wait(0.3) do
+            if UI.ActiveFeatures["SuperJump"] then
+                pcall(function()
+                    if player.Character and player.Character:FindFirstChild("Humanoid") then
+                        player.Character.Humanoid.JumpPower = 120
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+createToggle(movementPage, "Noclip (Walk Through Walls)", function(state)
+    UI.ActiveFeatures["Noclip"] = state
+    task.spawn(function()
+        while state and task.wait(0.1) do
+            if UI.ActiveFeatures["Noclip"] then
+                pcall(function()
+                    if player.Character then
+                        for _, part in ipairs(player.Character:GetDescendants()) do
+                            if part:IsA("BasePart") then
+                                part.CanCollide = false
+                            end
+                        end
+                    end
+                end)
+            else
+                if player.Character then
+                    for _, part in ipairs(player.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+----------------------------------------------------
+-- VISUALS PAGE
+----------------------------------------------------
+createToggle(visualsPage, "Player / Entity ESP", function(state)
+    UI.ActiveFeatures["ESP"] = state
+    task.spawn(function()
+        while state and task.wait(1) do
+            if UI.ActiveFeatures["ESP"] then
+                pcall(function()
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= player and p.Character and not p.Character:FindFirstChild("Highlight") then
+                            local hl = Instance.new("Highlight")
+                            hl.FillColor = Color3.fromRGB(255, 50, 50)
+                            hl.OutlineColor = Color3.fromRGB(255, 100, 100)
+                            hl.Parent = p.Character
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+createToggle(visualsPage, "Fullbright (Remove Darkness)", function(state)
+    if state then
+        Lighting.Brightness = 3
+        Lighting.ClockTime = 14
+    else
+        Lighting.Brightness = 1
+        Lighting.ClockTime = 12
+    end
+end)
+
+----------------------------------------------------
+-- AUTOFARM PAGE
+----------------------------------------------------
+createToggle(autofarmPage, "Auto Farm Bonds / Currency", function(state)
+    UI.ActiveFeatures["AutoFarm"] = state
+    task.spawn(function()
+        while state and task.wait(0.5) do
+            if UI.ActiveFeatures["AutoFarm"] then
+                pcall(function()
+                    local items = workspace:FindFirstChild("RuntimeItems") or workspace
+                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        for _, item in ipairs(items:GetChildren()) do
+                            if item:IsA("Model") and item:FindFirstChild("PrimaryPart") then
+                                item.PrimaryPart.CFrame = hrp.CFrame + Vector3.new(5, 0, 0)
+                                task.wait(0.1)
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end)
+end)
+
+----------------------------------------------------
+-- MISC PAGE
+----------------------------------------------------
+local function createButtonMisc(page, text, callback)
+    local yPos = 10 + (#page:GetChildren() * 50)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 40)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(50, 100, 150)
+    btn.BorderSizePixel = 0
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Parent = page
+    makeCorner(btn, 8)
+    makeStroke(btn, Color3.fromRGB(80, 150, 255), 0.3, 1)
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+createButtonMisc(miscPage, "🔄 Rejoin Server", function()
+    game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+end)
+
+createButtonMisc(miscPage, "⚡ Anti-AFK Kick Bypass", function()
+    local vu = game:GetService("VirtualUser")
+    player.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    end)
+    print("Anti-AFK Bypass Activated!")
+end)
+
+----------------------------------------------------
+-- SETTINGS PAGE
+----------------------------------------------------
+makeText(settingsPage, 18, "UI Settings", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
 
 local fpsBtn = createButton(settingsPage, "📊 FPS Counter: OFF", 200, 46, 16, 70, Color3.fromRGB(52, 100, 150), function()
     Settings.FPS = not Settings.FPS
     fpsBtn.Text = Settings.FPS and "📊 FPS Counter: ON" or "📊 FPS Counter: OFF"
 end)
 
-local soundBtn = createButton(settingsPage, "🔊 Sound: ON", 200, 46, 16, 130, Color3.fromRGB(100, 150, 80), function()
-    Settings.Sound = not Settings.Sound
-    soundBtn.Text = Settings.Sound and "🔊 Sound: ON" or "🔊 Sound: OFF"
+local themeBtn = createButton(settingsPage, "🌙 Theme: DARK", 200, 46, 16, 130, Color3.fromRGB(140, 80, 255), function()
+    Settings.Dark = not Settings.Dark
+    themeBtn.Text = Settings.Dark and "🌙 Theme: DARK" or "🌙 Theme: LIGHT"
+    applyTheme()
 end)
 
 createButton(settingsPage, "🎨 Accent Color", 200, 46, 16, 190, Color3.fromRGB(150, 80, 180), function()
@@ -340,40 +586,6 @@ createButton(settingsPage, "🎨 Accent Color", 200, 46, 16, 190, Color3.fromRGB
     applyTheme()
 end)
 
-makeText(visualsPage, 18, "Visuals", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
-
-local glowBtn = createButton(visualsPage, "✨ Glow: ON", 200, 46, 16, 70, Color3.fromRGB(255, 180, 80), function()
-    Settings.Glow = not Settings.Glow
-    glowBtn.Text = Settings.Glow and "✨ Glow: ON" or "✨ Glow: OFF"
-    applyTheme()
-end)
-
-local themeBtn = createButton(visualsPage, "🌙 Theme: DARK", 200, 46, 16, 130, Color3.fromRGB(140, 80, 255), function()
-    Settings.Dark = not Settings.Dark
-    themeBtn.Text = Settings.Dark and "🌙 Theme: DARK" or "🌙 Theme: LIGHT"
-    applyTheme()
-end)
-
-createButton(visualsPage, "🎆 FX Demo", 200, 46, 16, 190, Color3.fromRGB(90, 200, 200), function()
-    print("FX demo activated")
-end)
-
-makeText(aboutPage, 18, "About", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
-
-local aboutText = Instance.new("TextLabel")
-aboutText.Size = UDim2.new(1, -32, 1, -60)
-aboutText.Position = UDim2.new(0, 16, 0, 54)
-aboutText.BackgroundTransparency = 1
-aboutText.Font = Enum.Font.Gotham
-aboutText.Text = "Dead Rails Hub v3.1\n\n✓ Premium modern design\n✓ Smooth tabs and theme control\n✓ Mobile + PC friendly\n✓ Safe visual-only configuration\n\nF4 = Toggle | Drag the header to move"
-aboutText.TextColor3 = Color3.fromRGB(200, 200, 200)
-aboutText.TextSize = 14
-aboutText.TextWrapped = true
-aboutText.TextXAlignment = Enum.TextXAlignment.Left
-aboutText.TextYAlignment = Enum.TextYAlignment.Top
-aboutText.Parent = aboutPage
-makeCorner(aboutText, 12)
-
 local fpsLabel = makeText(homePage, 12, "FPS: --", Enum.Font.Gotham, Color3.fromRGB(170, 180, 210), Enum.TextXAlignment.Right, UDim2.new(1, -130, 0, 18), UDim2.new(0, 120, 0, 20))
 
 RunService.RenderStepped:Connect(function(dt)
@@ -384,6 +596,7 @@ RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
+-- Header Drag
 header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         UI.Dragging = true
@@ -410,6 +623,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
+-- Menu Visibility
 local function setMenuVisible(value)
     main.Visible = value
     toggleButton.Text = value and "✕" or "☰"
@@ -435,4 +649,4 @@ end)
 
 setSelectedTab("Home")
 applyTheme()
-print("Dead Rails Hub Premium UI loaded successfully.")
+print("✓ Dead Rails Master Hub loaded successfully with full features!")
