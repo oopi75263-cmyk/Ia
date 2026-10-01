@@ -1,5 +1,7 @@
--- Dead Rails Hub Premium UI - safe visual-only hub
--- Use: loadstring(game:HttpGet("https://raw.githubusercontent.com/oopi75263-cmyk/Ia/main/deadrails.lua"))()
+-- Dead Rails Hub Premium UI
+-- Safe visual-only Roblox menu
+-- Works on PC and mobile
+-- Press the floating button or F4 to open/close
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -32,8 +34,8 @@ local UI = {
     SelectedTab = "Home",
 }
 
-local function clamp(value, min, max)
-    return math.max(min, math.min(value, max))
+local function clamp(value, minValue, maxValue)
+    return math.max(minValue, math.min(value, maxValue))
 end
 
 local function lighten(color, amount)
@@ -58,6 +60,7 @@ local function makeCorner(parent, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius)
     corner.Parent = parent
+    return corner
 end
 
 local function makeStroke(parent, color, transparency, thickness)
@@ -82,22 +85,6 @@ local function makeText(parent, size, text, font, color, alignment, position, si
     label.TextYAlignment = Enum.TextYAlignment.Center
     label.Parent = parent
     return label
-end
-
-local function makeCard(parent, x, y, w, h, titleText, valueText, accentColor)
-    local card = Instance.new("Frame")
-    card.Size = UDim2.new(0, w, 0, h)
-    card.Position = UDim2.new(0, x, 0, y)
-    card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
-    card.BorderSizePixel = 0
-    card.Parent = parent
-    makeCorner(card, 14)
-
-    local t = makeText(card, 11, titleText, Enum.Font.Gotham, Color3.fromRGB(170, 180, 200), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 10), UDim2.new(1, -24, 0, 20))
-    t.TextTransparency = 0.15
-
-    local v = makeText(card, 22, valueText, Enum.Font.GothamBold, accentColor or Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 34), UDim2.new(1, -24, 0, 30))
-    return card
 end
 
 local function createButton(parent, text, sizeX, sizeY, posX, posY, bgColor, callback)
@@ -133,6 +120,65 @@ local function createButton(parent, text, sizeX, sizeY, posX, posY, bgColor, cal
     return btn
 end
 
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 84, 0, 84)
+toggleButton.Position = UDim2.new(1, -104, 1, -104)
+toggleButton.BackgroundColor3 = Settings.Accent
+toggleButton.BorderSizePixel = 0
+toggleButton.Text = "☰"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 30
+toggleButton.Parent = screenGui
+makeCorner(toggleButton, 20)
+local toggleStroke = makeStroke(toggleButton, Color3.fromRGB(255, 255, 255), 0.15, 2)
+
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 610, 0, 420)
+main.Position = UDim2.new(0.5, -305, 0.5, -210)
+main.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
+main.BorderSizePixel = 0
+main.Visible = false
+main.Parent = screenGui
+makeCorner(main, 24)
+local mainStroke = makeStroke(main, Settings.Accent, 0.2, 2)
+
+local header = Instance.new("Frame")
+header.Size = UDim2.new(1, 0, 0, 76)
+header.BackgroundColor3 = Color3.fromRGB(18, 21, 30)
+header.BorderSizePixel = 0
+header.Parent = main
+makeCorner(header, 24)
+
+local title = makeText(header, 25, "⚡ DEAD RAILS HUB", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 18, 0.5, -12), UDim2.new(1, -120, 0, 30))
+title.TextTransparency = 0.08
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.new(0, 42, 0, 42)
+closeBtn.Position = UDim2.new(1, -54, 0.5, -21)
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 90, 110)
+closeBtn.BorderSizePixel = 0
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.Text = "✕"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 18
+closeBtn.Parent = header
+makeCorner(closeBtn, 12)
+
+local sidebar = Instance.new("Frame")
+sidebar.Size = UDim2.new(0, 170, 1, -76)
+sidebar.Position = UDim2.new(0, 0, 0, 76)
+sidebar.BackgroundColor3 = Color3.fromRGB(22, 26, 35)
+sidebar.BorderSizePixel = 0
+sidebar.Parent = main
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -170, 1, -76)
+content.Position = UDim2.new(0, 170, 0, 76)
+content.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
+content.BorderSizePixel = 0
+content.Parent = main
+
 local function createPage(name)
     local page = Instance.new("Frame")
     page.Name = name
@@ -159,7 +205,6 @@ local function applyTheme()
     local bgSidebar = Settings.Dark and Color3.fromRGB(22, 26, 35) or Color3.fromRGB(223, 229, 240)
     local bgContent = Settings.Dark and Color3.fromRGB(12, 14, 20) or Color3.fromRGB(238, 242, 248)
     local textMain = Settings.Dark and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(24, 28, 36)
-    local textSub = Settings.Dark and Color3.fromRGB(200, 206, 220) or Color3.fromRGB(75, 82, 96)
 
     main.BackgroundColor3 = bgMain
     header.BackgroundColor3 = bgHeader
@@ -179,66 +224,6 @@ local function applyTheme()
         tab.button.TextColor3 = selected and Color3.fromRGB(255, 255, 255) or textMain
     end
 end
-
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 84, 0, 84)
-toggleButton.Position = UDim2.new(1, -104, 1, -104)
-toggleButton.BackgroundColor3 = Settings.Accent
-toggleButton.BorderSizePixel = 0
-toggleButton.Text = "☰"
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.TextSize = 30
-toggleButton.Parent = screenGui
-makeCorner(toggleButton, 20)
-toggleStroke = makeStroke(toggleButton, Color3.fromRGB(255, 255, 255), 0.15, 2)
-
-local main = Instance.new("Frame")
-main.Size = UDim2.new(0, 610, 0, 420)
-main.Position = UDim2.new(0.5, -305, 0.5, -210)
-main.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
-main.BorderSizePixel = 0
-main.Visible = false
-main.Parent = screenGui
-makeCorner(main, 24)
-mainStroke = makeStroke(main, Settings.Accent, 0.2, 2)
-
-local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, 76)
-header.BackgroundColor3 = Color3.fromRGB(18, 21, 30)
-header.BorderSizePixel = 0
-header.Parent = main
-makeCorner(header, 24)
-
-local title = makeText(header, 25, "⚡ DEAD RAILS HUB", Enum.Font.GothamBold, Color3.fromRGB(255,255,255), Enum.TextXAlignment.Left, UDim2.new(0, 18, 0.5, -12), UDim2.new(1, -120, 0, 30))
-
-title.TextTransparency = 0.08
-
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 42, 0, 42)
-closeBtn.Position = UDim2.new(1, -54, 0.5, -21)
-closeBtn.BackgroundColor3 = Color3.fromRGB(255, 90, 110)
-closeBtn.BorderSizePixel = 0
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.Text = "✕"
-closeBtn.TextColor3 = Color3.fromRGB(255,255,255)
-closeBtn.TextSize = 18
-closeBtn.Parent = header
-makeCorner(closeBtn, 12)
-
-local sidebar = Instance.new("Frame")
-sidebar.Size = UDim2.new(0, 170, 1, -76)
-sidebar.Position = UDim2.new(0, 0, 0, 76)
-sidebar.BackgroundColor3 = Color3.fromRGB(22, 26, 35)
-sidebar.BorderSizePixel = 0
-sidebar.Parent = main
-
-local content = Instance.new("Frame")
-content.Size = UDim2.new(1, -170, 1, -76)
-content.Position = UDim2.new(0, 170, 0, 76)
-content.BackgroundColor3 = Color3.fromRGB(12, 14, 20)
-content.BorderSizePixel = 0
-content.Parent = main
 
 local pageNames = {"Home", "Settings", "Visuals", "About"}
 for idx, pageName in ipairs(pageNames) do
@@ -269,13 +254,29 @@ local settingsPage = UI.Pages["Settings"]
 local visualsPage = UI.Pages["Visuals"]
 local aboutPage = UI.Pages["About"]
 
-makeText(homePage, 18, "Quick Actions", Enum.Font.GothamBold, Color3.fromRGB(255,255,255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
+makeText(homePage, 18, "Quick Actions", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
 
 local statCards = Instance.new("Frame")
 statCards.Size = UDim2.new(1, -32, 0, 150)
 statCards.Position = UDim2.new(0, 16, 0, 50)
 statCards.BackgroundTransparency = 1
 statCards.Parent = homePage
+
+local function makeCard(parent, x, y, w, h, titleText, valueText, accentColor)
+    local card = Instance.new("Frame")
+    card.Size = UDim2.new(0, w, 0, h)
+    card.Position = UDim2.new(0, x, 0, y)
+    card.BackgroundColor3 = Color3.fromRGB(28, 32, 42)
+    card.BorderSizePixel = 0
+    card.Parent = parent
+    makeCorner(card, 14)
+
+    local title = makeText(card, 11, titleText, Enum.Font.Gotham, Color3.fromRGB(170, 180, 200), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 10), UDim2.new(1, -24, 0, 20))
+    title.TextTransparency = 0.15
+
+    local value = makeText(card, 22, valueText, Enum.Font.GothamBold, accentColor or Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 12, 0, 34), UDim2.new(1, -24, 0, 30))
+    return value
+end
 
 makeCard(statCards, 0, 0, 170, 68, "Players", tostring(#Players:GetPlayers()), Color3.fromRGB(110, 180, 255))
 makeCard(statCards, 180, 0, 170, 68, "Theme", Settings.Dark and "Dark" or "Light", Color3.fromRGB(110, 230, 150))
@@ -315,7 +316,7 @@ homeStatus.TextYAlignment = Enum.TextYAlignment.Top
 homeStatus.Parent = homePage
 makeCorner(homeStatus, 12)
 
-makeText(settingsPage, 18, "Settings", Enum.Font.GothamBold, Color3.fromRGB(255,255,255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
+makeText(settingsPage, 18, "Settings", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
 
 local fpsBtn = createButton(settingsPage, "📊 FPS Counter: OFF", 200, 46, 16, 70, Color3.fromRGB(52, 100, 150), function()
     Settings.FPS = not Settings.FPS
@@ -339,7 +340,7 @@ createButton(settingsPage, "🎨 Accent Color", 200, 46, 16, 190, Color3.fromRGB
     applyTheme()
 end)
 
-makeText(visualsPage, 18, "Visuals", Enum.Font.GothamBold, Color3.fromRGB(255,255,255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
+makeText(visualsPage, 18, "Visuals", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
 
 local glowBtn = createButton(visualsPage, "✨ Glow: ON", 200, 46, 16, 70, Color3.fromRGB(255, 180, 80), function()
     Settings.Glow = not Settings.Glow
@@ -357,14 +358,14 @@ createButton(visualsPage, "🎆 FX Demo", 200, 46, 16, 190, Color3.fromRGB(90, 2
     print("FX demo activated")
 end)
 
-makeText(aboutPage, 18, "About", Enum.Font.GothamBold, Color3.fromRGB(255,255,255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
+makeText(aboutPage, 18, "About", Enum.Font.GothamBold, Color3.fromRGB(255, 255, 255), Enum.TextXAlignment.Left, UDim2.new(0, 16, 0, 18), UDim2.new(1, -32, 0, 28))
 
 local aboutText = Instance.new("TextLabel")
 aboutText.Size = UDim2.new(1, -32, 1, -60)
 aboutText.Position = UDim2.new(0, 16, 0, 54)
 aboutText.BackgroundTransparency = 1
 aboutText.Font = Enum.Font.Gotham
-aboutText.Text = "Dead Rails Hub v3.1\n\n✓ Premium modern design\n✓ Smooth menus and theme control\n✓ Optimized for mobile + PC\n✓ Safe visual-only configuration\n\nF4 = Toggle | Drag the header to move"
+aboutText.Text = "Dead Rails Hub v3.1\n\n✓ Premium modern design\n✓ Smooth tabs and theme control\n✓ Mobile + PC friendly\n✓ Safe visual-only configuration\n\nF4 = Toggle | Drag the header to move"
 aboutText.TextColor3 = Color3.fromRGB(200, 200, 200)
 aboutText.TextSize = 14
 aboutText.TextWrapped = true
@@ -413,9 +414,7 @@ local function setMenuVisible(value)
     main.Visible = value
     toggleButton.Text = value and "✕" or "☰"
     if value then
-        TweenService:Create(main, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Position = main.Position
-        }):Play()
+        toggleButton.BackgroundColor3 = Settings.Accent
     end
 end
 
