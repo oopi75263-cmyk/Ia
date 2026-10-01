@@ -1,8 +1,8 @@
 -- Safe Dead Rails-inspired Roblox UI prototype
--- Place this script in a LocalScript under StarterPlayer > StarterPlayerScripts
+-- Designed for both PC and mobile play
+-- Press the floating button to open/close the menu on phone
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
@@ -59,14 +59,48 @@ local function createButton(parent, text, sizeX, sizeY, posX, posY, bgColor)
     return btn
 end
 
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 64, 0, 64)
+toggleButton.Position = UDim2.new(1, -88, 1, -88)
+toggleButton.BackgroundColor3 = Color3.fromRGB(90, 110, 255)
+toggleButton.BorderSizePixel = 0
+toggleButton.Text = "☰"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 28
+toggleButton.Parent = screenGui
+makeCorner(toggleButton, 18)
+makeStroke(toggleButton, Color3.fromRGB(255, 255, 255), 0.2, 1)
+
 local main = Instance.new("Frame")
 main.Size = UDim2.new(0, 560, 0, 360)
 main.Position = UDim2.new(0.5, -280, 0.5, -180)
 main.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 main.BorderSizePixel = 0
+main.Visible = false
 main.Parent = screenGui
 makeCorner(main, 18)
 makeStroke(main, Color3.fromRGB(75, 75, 85), 0.7, 1)
+
+local showMenu = false
+
+local function setMenuVisible(value)
+    showMenu = value
+    main.Visible = value
+    toggleButton.Text = value and "✕" or "☰"
+end
+
+toggleButton.MouseButton1Click:Connect(function()
+    setMenuVisible(not showMenu)
+end)
+
+-- Optional: also allow PC users to open with F4 when available
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F4 then
+        setMenuVisible(not showMenu)
+    end
+end)
 
 local header = Instance.new("Frame")
 header.Size = UDim2.new(1, 0, 0, 56)
@@ -89,7 +123,7 @@ closeBtn.TextSize = 15
 closeBtn.Parent = header
 makeCorner(closeBtn, 8)
 closeBtn.MouseButton1Click:Connect(function()
-    screenGui.Enabled = false
+    setMenuVisible(false)
 end)
 
 local sidebar = Instance.new("Frame")
@@ -257,12 +291,4 @@ aboutText.TextYAlignment = Enum.TextYAlignment.Top
 aboutText.Parent = aboutPage
 
 setSelectedTab("Home")
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.F4 then
-        screenGui.Enabled = not screenGui.Enabled
-    end
-end)
-
 print("Dead Rails Hub loaded successfully.")
