@@ -39,6 +39,8 @@ local UI = {
     StartPos = UDim2.new(),
     SelectedTab = "Home",
     ActiveFeatures = {},
+    ActiveConnections = {},
+    ActiveLoops = {},
 }
 
 local function clamp(value, minValue, maxValue)
@@ -125,6 +127,27 @@ local function createButton(parent, text, sizeX, sizeY, posX, posY, bgColor, cal
     end
 
     return btn
+end
+
+-- Notificación UI
+local function showNotification(text, duration)
+    duration = duration or 3
+    local notif = Instance.new("TextLabel")
+    notif.Size = UDim2.new(0, 300, 0, 60)
+    notif.Position = UDim2.new(1, -320, 0, 20)
+    notif.BackgroundColor3 = Color3.fromRGB(30, 35, 50)
+    notif.BorderSizePixel = 0
+    notif.Font = Enum.Font.GothamSemibold
+    notif.Text = text
+    notif.TextColor3 = Color3.fromRGB(150, 200, 255)
+    notif.TextSize = 14
+    notif.TextWrapped = true
+    notif.Parent = screenGui
+    makeCorner(notif, 12)
+    makeStroke(notif, Color3.fromRGB(118, 128, 255), 0.3, 1)
+    
+    task.wait(duration)
+    notif:Destroy()
 end
 
 local toggleButton = Instance.new("TextButton")
@@ -269,7 +292,7 @@ local autofarmPage = UI.Pages["AutoFarm"]
 local miscPage = UI.Pages["Misc"]
 local settingsPage = UI.Pages["Settings"]
 
--- Helper para crear toggles
+-- Helper para crear toggles mejorado
 local function createToggle(page, text, callback)
     local yPos = 10 + (#page:GetChildren() * 50)
     local btn = Instance.new("TextButton")
@@ -353,55 +376,81 @@ makeCorner(homeStatus, 12)
 ----------------------------------------------------
 createToggle(combatPage, "Godmode (Infinite Health)", function(state)
     UI.ActiveFeatures["Godmode"] = state
-    task.spawn(function()
-        while state and task.wait(0.5) do
-            if UI.ActiveFeatures["Godmode"] then
-                pcall(function()
-                    if player.Character and player.Character:FindFirstChild("Humanoid") then
-                        player.Character.Humanoid.Health = player.Character.Humanoid.MaxHealth
-                    end
-                end)
+    if state then
+        UI.ActiveLoops["Godmode"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["Godmode"] and task.wait(0.5) do
+                if UI.ActiveFeatures["Godmode"] then
+                    pcall(function()
+                        if player.Character and player.Character:FindFirstChild("Humanoid") then
+                            player.Character.Humanoid.Health = player.Character.Humanoid.MaxHealth
+                        end
+                    end)
+                end
             end
-        end
-    end)
+        end)
+    else
+        UI.ActiveLoops["Godmode"] = false
+    end
 end)
 
 createToggle(combatPage, "Kill Aura (Damage Nearby)", function(state)
     UI.ActiveFeatures["KillAura"] = state
-    task.spawn(function()
-        while state and task.wait(0.2) do
-            if UI.ActiveFeatures["KillAura"] then
-                pcall(function()
-                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        for _, v in ipairs(workspace:GetDescendants()) do
-                            if v:IsA("Model") and v:FindFirstChild("Humanoid") and v:FindFirstChild("HumanoidRootPart") and v ~= player.Character then
-                                if (v.HumanoidRootPart.Position - hrp.Position).Magnitude < 25 then
-                                    v.Humanoid.Health = 0
+    if state then
+        UI.ActiveLoops["KillAura"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["KillAura"] and task.wait(0.3) do
+                if UI.ActiveFeatures["KillAura"] then
+                    pcall(function()
+                        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if not hrp then return end
+                        
+                        -- Usar GetPartBoundsInRadius para búsqueda eficiente
+                        local nearby = workspace:GetPartBoundsInRadius(hrp.Position, 25)
+                        local processed = {}
+                        
+                        for _, part in ipairs(nearby) do
+                            local model = part:FindFirstAncestorOfClass("Model")
+                            if model and model ~= player.Character and not processed[model] then
+                                processed[model] = true
+                                local humanoid = model:FindFirstChildOfClass("Humanoid")
+                                if humanoid and humanoid.Health > 0 then
+                                    humanoid.Health = 0
                                 end
                             end
                         end
-                    end
-                end)
+                    end)
+                end
             end
-        end
-    end)
+        end)
+    else
+        UI.ActiveLoops["KillAura"] = false
+    end
 end)
 
 createToggle(combatPage, "Infinite Ammo / No Reload", function(state)
     UI.ActiveFeatures["InfiniteAmmo"] = state
-    task.spawn(function()
-        while state and task.wait(0.5) do
-            if UI.ActiveFeatures["InfiniteAmmo"] then
-                pcall(function()
-                    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-                    if tool and tool:FindFirstChild("Ammo") then
-                        tool.Ammo.Value = 999
-                    end
-                end)
+    if state then
+        UI.ActiveLoops["InfiniteAmmo"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["InfiniteAmmo"] and task.wait(0.5) do
+                if UI.ActiveFeatures["InfiniteAmmo"] then
+                    pcall(function()
+                        local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
+                        if tool then
+                            if tool:FindFirstChild("Ammo") then
+                                tool.Ammo.Value = 999
+                            elseif tool:GetAttribute("Ammo") then
+                                tool:SetAttribute("Ammo", 999)
+                            end
+                        end
+                    end)
+                end
             end
-        end
-    end)
+        end)
+    else
+        UI.ActiveLoops["InfiniteAmmo"] = false
+    end
 end)
 
 ----------------------------------------------------
@@ -409,59 +458,77 @@ end)
 ----------------------------------------------------
 createToggle(movementPage, "Speed Boost (WalkSpeed 35)", function(state)
     UI.ActiveFeatures["SpeedBoost"] = state
-    task.spawn(function()
-        while state and task.wait(0.3) do
-            if UI.ActiveFeatures["SpeedBoost"] then
-                pcall(function()
-                    if player.Character and player.Character:FindFirstChild("Humanoid") then
-                        player.Character.Humanoid.WalkSpeed = 35
-                    end
-                end)
+    if state then
+        UI.ActiveLoops["SpeedBoost"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["SpeedBoost"] and task.wait(0.3) do
+                if UI.ActiveFeatures["SpeedBoost"] then
+                    pcall(function()
+                        if player.Character and player.Character:FindFirstChild("Humanoid") then
+                            player.Character.Humanoid.WalkSpeed = 35
+                        end
+                    end)
+                end
             end
-        end
-    end)
+        end)
+    else
+        UI.ActiveLoops["SpeedBoost"] = false
+    end
 end)
 
 createToggle(movementPage, "Super Jump (JumpPower 120)", function(state)
     UI.ActiveFeatures["SuperJump"] = state
-    task.spawn(function()
-        while state and task.wait(0.3) do
-            if UI.ActiveFeatures["SuperJump"] then
-                pcall(function()
-                    if player.Character and player.Character:FindFirstChild("Humanoid") then
-                        player.Character.Humanoid.JumpPower = 120
-                    end
-                end)
+    if state then
+        UI.ActiveLoops["SuperJump"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["SuperJump"] and task.wait(0.3) do
+                if UI.ActiveFeatures["SuperJump"] then
+                    pcall(function()
+                        if player.Character and player.Character:FindFirstChild("Humanoid") then
+                            player.Character.Humanoid.JumpPower = 120
+                        end
+                    end)
+                end
             end
-        end
-    end)
+        end)
+    else
+        UI.ActiveLoops["SuperJump"] = false
+    end
 end)
 
 createToggle(movementPage, "Noclip (Walk Through Walls)", function(state)
     UI.ActiveFeatures["Noclip"] = state
-    task.spawn(function()
-        while state and task.wait(0.1) do
-            if UI.ActiveFeatures["Noclip"] then
-                pcall(function()
-                    if player.Character then
-                        for _, part in ipairs(player.Character:GetDescendants()) do
-                            if part:IsA("BasePart") then
-                                part.CanCollide = false
+    
+    if state then
+        UI.ActiveLoops["Noclip"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["Noclip"] and task.wait() do
+                if UI.ActiveFeatures["Noclip"] then
+                    pcall(function()
+                        if player.Character then
+                            for _, part in ipairs(player.Character:GetDescendants()) do
+                                if part:IsA("BasePart") then
+                                    part.CanCollide = false
+                                end
                             end
                         end
-                    end
-                end)
-            else
-                if player.Character then
-                    for _, part in ipairs(player.Character:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.CanCollide = true
-                        end
+                    end)
+                end
+            end
+        end)
+    else
+        UI.ActiveLoops["Noclip"] = false
+        -- Restaurar colisiones SOLO cuando se desactiva
+        pcall(function()
+            if player.Character then
+                for _, part in ipairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = true
                     end
                 end
             end
-        end
-    end)
+        end)
+    end
 end)
 
 ----------------------------------------------------
@@ -469,20 +536,39 @@ end)
 ----------------------------------------------------
 createToggle(visualsPage, "Player / Entity ESP", function(state)
     UI.ActiveFeatures["ESP"] = state
+    
+    -- Limpiar highlights existentes al desactivar
+    if not state then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character then
+                for _, child in ipairs(p.Character:GetChildren()) do
+                    if child:IsA("Highlight") then
+                        child:Destroy()
+                    end
+                end
+            end
+        end
+        UI.ActiveLoops["ESP"] = false
+        return
+    end
+    
+    -- Crear highlights solo si no existen
+    UI.ActiveLoops["ESP"] = true
     task.spawn(function()
-        while state and task.wait(1) do
-            if UI.ActiveFeatures["ESP"] then
-                pcall(function()
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= player and p.Character and not p.Character:FindFirstChild("Highlight") then
+        while UI.ActiveLoops["ESP"] and task.wait(0.5) do
+            pcall(function()
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= player and p.Character then
+                        local existing = p.Character:FindFirstChildOfClass("Highlight")
+                        if not existing then
                             local hl = Instance.new("Highlight")
                             hl.FillColor = Color3.fromRGB(255, 50, 50)
                             hl.OutlineColor = Color3.fromRGB(255, 100, 100)
                             hl.Parent = p.Character
                         end
                     end
-                end)
-            end
+                end
+            end)
         end
     end)
 end)
@@ -502,24 +588,29 @@ end)
 ----------------------------------------------------
 createToggle(autofarmPage, "Auto Farm Bonds / Currency", function(state)
     UI.ActiveFeatures["AutoFarm"] = state
-    task.spawn(function()
-        while state and task.wait(0.5) do
-            if UI.ActiveFeatures["AutoFarm"] then
-                pcall(function()
-                    local items = workspace:FindFirstChild("RuntimeItems") or workspace
-                    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        for _, item in ipairs(items:GetChildren()) do
-                            if item:IsA("Model") and item:FindFirstChild("PrimaryPart") then
-                                item.PrimaryPart.CFrame = hrp.CFrame + Vector3.new(5, 0, 0)
-                                task.wait(0.1)
+    if state then
+        UI.ActiveLoops["AutoFarm"] = true
+        task.spawn(function()
+            while UI.ActiveLoops["AutoFarm"] and task.wait(0.5) do
+                if UI.ActiveFeatures["AutoFarm"] then
+                    pcall(function()
+                        local items = workspace:FindFirstChild("RuntimeItems") or workspace
+                        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+                        if hrp and items then
+                            for _, item in ipairs(items:GetChildren()) do
+                                if item:IsA("Model") and item:FindFirstChild("PrimaryPart") then
+                                    item.PrimaryPart.CFrame = hrp.CFrame + Vector3.new(5, 0, 0)
+                                    task.wait(0.1)
+                                end
                             end
                         end
-                    end
-                end)
+                    end)
+                end
             end
-        end
-    end)
+        end)
+    else
+        UI.ActiveLoops["AutoFarm"] = false
+    end
 end)
 
 ----------------------------------------------------
@@ -550,12 +641,13 @@ end)
 
 createButtonMisc(miscPage, "⚡ Anti-AFK Kick Bypass", function()
     local vu = game:GetService("VirtualUser")
-    player.Idled:Connect(function()
+    local connection = player.Idled:Connect(function()
         vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         task.wait(1)
         vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     end)
-    print("Anti-AFK Bypass Activated!")
+    table.insert(UI.ActiveConnections, connection)
+    showNotification("✓ Anti-AFK Bypass Activated!", 2)
 end)
 
 ----------------------------------------------------
@@ -587,18 +679,20 @@ createButton(settingsPage, "🎨 Accent Color", 200, 46, 16, 190, Color3.fromRGB
 end)
 
 local fpsLabel = makeText(homePage, 12, "FPS: --", Enum.Font.Gotham, Color3.fromRGB(170, 180, 210), Enum.TextXAlignment.Right, UDim2.new(1, -130, 0, 18), UDim2.new(0, 120, 0, 20))
+fpsLabel.Visible = false
 
 RunService.RenderStepped:Connect(function(dt)
     if Settings.FPS and dt > 0 then
+        fpsLabel.Visible = true
         fpsLabel.Text = "FPS: " .. tostring(math.floor(1 / dt))
     else
-        fpsLabel.Text = "FPS: --"
+        fpsLabel.Visible = false
     end
 end)
 
--- Header Drag
+-- Header Drag mejorado para mobile
 header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         UI.Dragging = true
         UI.DragStart = input.Position
         UI.StartPos = main.Position
@@ -606,13 +700,13 @@ header.InputBegan:Connect(function(input)
 end)
 
 header.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         UI.Dragging = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if UI.Dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+    if UI.Dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - UI.DragStart
         main.Position = UDim2.new(
             UI.StartPos.X.Scale,
@@ -647,6 +741,23 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- Cleanup on death
+player.CharacterAdded:Connect(function()
+    -- Detener todos los loops activos
+    for loopName, _ in pairs(UI.ActiveLoops) do
+        UI.ActiveLoops[loopName] = false
+    end
+    -- Desactivar features
+    for feature, _ in pairs(UI.ActiveFeatures) do
+        UI.ActiveFeatures[feature] = false
+    end
+end)
+
 setSelectedTab("Home")
 applyTheme()
-print("✓ Dead Rails Master Hub loaded successfully with full features!")
+print("✓ Dead Rails Master Hub loaded successfully with CRITICAL FIXES!")
+print("✓ Memory leak fixes applied")
+print("✓ Kill Aura optimized with GetPartBoundsInRadius")
+print("✓ ESP cleanup system implemented")
+print("✓ Noclip restoration fixed")
+print("✓ Mobile drag support added")
